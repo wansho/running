@@ -143,7 +143,7 @@ def plot_running() -> None:
         ax.xaxis.set_major_formatter(formatter)
         ax.tick_params(axis="both", which="major", labelsize="small", length=5)
         ax.tick_params(axis="both", which="minor", labelsize="small", length=5)
-        ax.set_title("running, a way of life")
+        ax.set_title("running")
 
         dts, accs, distances, paces = get_running_data()
         this_year = datetime.now().year
