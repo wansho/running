@@ -31,9 +31,9 @@ SVG_OUTPUT_FILE = str(DATA_DIR / "running_stats.svg")
 CSV_OUTPUT_FILE = str(DATA_DIR / "running.csv")
 
 # OAuth（建议改为环境变量）
-CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID", "55625")
-CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET", "f06514c9a9b0b79bd05f2589bf1ba260b3dcbd82")
-REFRESH_TOKEN = os.environ.get("STRAVA_REFRESH_TOKEN", "82b6034b24ae98ca4b704e6398fe1dcb3ce8579b")
+CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID")
+CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET")
+REFRESH_TOKEN = os.environ.get("STRAVA_REFRESH_TOKEN")
 
 # ---- 日志 ----
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -188,13 +188,13 @@ def parse_activity(activity):
 
     moving_time = 0
     try:
-        moving_time = activity.moving_time.total_seconds() if activity.moving_time else 0
+        moving_time = float(activity.moving_time) if activity.moving_time else 0
     except Exception:
         moving_time = 0
 
     elapsed_time = 0
     try:
-        elapsed_time = activity.elapsed_time.total_seconds() if activity.elapsed_time else moving_time
+        elapsed_time = float(activity.elapsed_time) if activity.elapsed_time else moving_time
     except Exception:
         elapsed_time = moving_time
 
@@ -224,7 +224,7 @@ def parse_activity(activity):
         "distance": distance,
         "moving_time": moving_time,
         "elapsed_time": elapsed_time,
-        "type": str(activity.type),
+        "type": str(activity.sport_type.root),
         "start_date": sd,
         "start_date_local": sdl,
         "location_country": None,
