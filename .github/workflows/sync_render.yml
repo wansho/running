@@ -14,6 +14,7 @@ env:
   STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
   STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
   STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+  PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
 jobs:
   sync:
@@ -48,10 +49,10 @@ jobs:
       - name: generate svg
         run: |
           python render.py
-      - name: sync and generate SVG file
+      - name: commit
         run: |
           git config --local user.email "${{ env.GITHUB_EMAIL }}"
           git config --local user.name "${{ env.GITHUB_NAME }}"
           git add data/*.csv *.svg || true
           git commit -a -m 'sync and generate svg' || echo "nothing to commit"
-          git push || echo "nothing to push"
+          git push https://x-access-token:${PAT_TOKEN}@github.com/wansho/running.git HEAD:main || echo "nothing to push"
