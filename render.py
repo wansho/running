@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-根据 running.csv 绘制美观的跑步统计 SVG（去掉心率展示，添加最近12个月跑量柱状图，横坐标为月份，纵坐标为跑量，柱状图使用斜线填充）。
+根据 running.csv 绘制美观的跑步统计 SVG（去掉心率展示，添加最近12个月跑量柱状图，横坐标为月份，纵坐标为跑量，柱状图使用斜线填充，添加地图上的跑步起始点）。
 """
 
 from __future__ import annotations
 import math
 import calendar
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional, TypeVar
 from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 import numpy as np
-
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.io.shapereader import Reader
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 
 T = TypeVar("T")
@@ -27,6 +29,8 @@ K = TypeVar("K")
 CSV_FILE = Path("data/running.csv")
 OUT_SVG = Path("running.svg")
 RUNNER = "wanshuo"
+# 本地 shapefile 目录
+SHAPEFILE_DIR = Path("data/ne_50m/")
 
 
 def groupby(data: list[T], key_func: Callable[[T], K]) -> dict[K, list[T]]:
@@ -100,9 +104,9 @@ def make_circular(lst: list[T]) -> list[T]:
 
 
 def get_running_data() -> tuple[
-    list[datetime], list[float], list[float], list[int]
+    list[datetime], list[float], list[float], list[int], list[float], list[float]
 ]:
-    """返回 dts, accs, distances, paces"""
+    """返回 dts, accs, distances, paces, start_lats, start_lngs"""
     data = []
     with open(CSV_FILE) as file:
         for line in file:
@@ -115,22 +119,39 @@ def get_running_data() -> tuple[
             if secs == 60:
                 mins = mins + 1
                 secs = 0
+            # 处理纬度和经度，跳过空值或无效值
+            try:
+                start_lat = float(cols[4]) if len(cols) > 4 and cols[4].strip() else None
+                start_lng = float(cols[5]) if len(cols) > 5 and cols[5].strip() else None
+                # 如果纬度或经度为空或无效，跳过该行
+                if start_lat is None or start_lng is None:
+                    print(f"Skipping row with DT={cols[0]} due to invalid lat/lng: {cols[4:6]}")
+                    continue
+            except ValueError as e:
+                print(f"Skipping row with DT={cols[0]} due to ValueError: {e}, cols={cols[4:6]}")
+                continue
             if distance <= 0.0:
                 continue
-            data.append((dt, distance, mins * 60 + secs))
+            data.append((dt, distance, mins * 60 + secs, start_lat, start_lng))
     data.sort(key=lambda t: t[0])
     acc = 0.0
     dts = []
     accs = []
     distances = []
     paces = []
-    for dt, distance, pace in data:
+    start_lats = []
+    start_lngs = []
+    for dt, distance, pace, start_lat, start_lng in data:
         acc += distance
         dts.append(dt)
         accs.append(acc)
         distances.append(distance)
         paces.append(pace)
-    return dts, accs, distances, paces
+        start_lats.append(start_lat)
+        start_lngs.append(start_lng)
+    # 调试: 打印有效点的数量
+    print(f"Total valid points: {len(start_lats)}")
+    return dts, accs, distances, paces, start_lats, start_lngs
 
 
 def get_last_12_months_distances(dts: list[datetime], distances: list[float]) -> list[tuple[str, float]]:
@@ -156,6 +177,7 @@ def get_last_12_months_distances(dts: list[datetime], distances: list[float]) ->
     print("Generated months:", last_12_months)
     return last_12_months
 
+
 def plot_running() -> None:
     with plt.xkcd():
         fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
@@ -168,7 +190,7 @@ def plot_running() -> None:
         ax.tick_params(axis="both", which="minor", labelsize="small", length=5)
         ax.set_title("running")
 
-        dts, accs, distances, paces = get_running_data()
+        dts, accs, distances, paces, start_lats, start_lngs = get_running_data()
         this_year = datetime.now().year
 
         ax.plot(dts, accs, color="#d62728")
@@ -265,8 +287,8 @@ def plot_running() -> None:
             [distances[i] for i, dt in enumerate(dts) if dt.year == this_year]
         )
         fig.text(
-            0.97,
-            0.15,
+            0.99,
+            0.41,
             f"{RUNNER}\n"
             f"{years} years\n"
             f"{len(dts)} times\n"
@@ -275,7 +297,7 @@ def plot_running() -> None:
             f"latest {dts[-1]: %Y-%m-%d} {distances[-1]:.2f}Km",
             ha="right",
             va="bottom",
-            fontsize="small",
+            fontsize="x-small",
             linespacing=1.5,
         )
 
@@ -289,18 +311,84 @@ def plot_running() -> None:
         ax_bar.spines[["top", "right"]].set_visible(False)
         ax_bar.spines[["left", "bottom"]].set_linewidth(0.5)
         ax_bar.xaxis.set_major_locator(tick.MaxNLocator(12))
-        ax_bar.set_xticks(range(len(months)))  # 明确设置横轴刻度位置
-        ax_bar.set_xticklabels(months, rotation=45, ha="right", fontsize=6)  # 调整旋转角度
+        ax_bar.set_xticks(range(len(months)))
+        ax_bar.set_xticklabels(months, rotation=45, ha="right", fontsize=6)
         ax_bar.yaxis.set_major_locator(tick.MaxNLocator(5))
-        ax_bar.tick_params(axis="x", which="major", labelsize=6, width=0.5, color="grey")  # 调整横轴刻度点
-        ax_bar.tick_params(axis="y", which="major", labelsize=6, width=0.5, color="grey")  # 调整纵轴刻度点
+        ax_bar.tick_params(axis="x", which="major", labelsize=6, width=0.5, color="grey")
+        ax_bar.tick_params(axis="y", which="major", labelsize=6, width=0.5, color="grey")
+
+        # 地图上的跑步起始点（使用本地 shapefile）
+        ax_loc = plt.axes([0.75, 0.1, 0.3, 0.3], projection=ccrs.PlateCarree())
+        # 使用本地 shapefile，设置较低 zorder
+        ax_loc.add_feature(cfeature.ShapelyFeature(
+            Reader(SHAPEFILE_DIR / "ne_50m_land/ne_50m_land.shp").geometries(),
+            ccrs.PlateCarree(),
+            facecolor="#d0e1c8",
+            zorder=1
+        ))
+        ax_loc.add_feature(cfeature.ShapelyFeature(
+            Reader(SHAPEFILE_DIR / "ne_50m_ocean/ne_50m_ocean.shp").geometries(),
+            ccrs.PlateCarree(),
+            facecolor="#c7ddef",
+            zorder=1
+        ))
+        ax_loc.add_feature(cfeature.ShapelyFeature(
+            Reader(SHAPEFILE_DIR / "ne_50m_coastline/ne_50m_coastline.shp").geometries(),
+            ccrs.PlateCarree(),
+            linewidth=0.5,
+            facecolor="#9b9b9b",
+            zorder=2
+        ))
+        # ax_loc.add_feature(cfeature.ShapelyFeature(
+        #     Reader(SHAPEFILE_DIR / "ne_50m_admin_0_boundary_lines_land.shp").geometries(),
+        #     ccrs.PlateCarree(),
+        #     linewidth=0.5,
+        #     zorder=2
+        # ))
+        # 调试: 打印经纬度范围和点数量
+        if start_lats and start_lngs:
+            lat_min, lat_max = min(start_lats), max(start_lats)
+            lng_min, lng_max = min(start_lngs), max(start_lngs)
+            print(f"Lat range: {lat_min:.4f} to {lat_max:.4f}")
+            print(f"Lng range: {lng_min:.4f} to {lng_max:.4f}")
+            print(f"Number of points to plot: {len(start_lats)}")
+            # 设置地图范围，添加动态边距
+            lat_margin = 1.0 if lat_max - lat_min < 10 else 2.0
+            lng_margin = 1.0 if lng_max - lng_min < 10 else 2.0
+            ax_loc.set_extent(
+                [lng_min - lng_margin, lng_max + lng_margin, lat_min - lat_margin, lat_max + lat_margin],
+                crs=ccrs.PlateCarree()
+            )
+        else:
+            print("No valid lat/lng data to plot, using default extent")
+            ax_loc.set_extent([-180, 180, -90, 90], crs=ccrs.PlateCarree())
+        # 绘制跑步起始点，设置高 zorder
+        if start_lats and start_lngs:
+            dates_num = mdates.date2num(dts)
+            norm = plt.Normalize(min(dates_num), max(dates_num))
+            colors = plt.cm.coolwarm(norm(dates_num))
+            sizes = [max(10, d * 8) for d in distances]  # 修改: 调小点大小
+            ax_loc.scatter(
+                start_lngs,
+                start_lats,
+                s=sizes,
+                c=colors,
+                alpha=0.5,  # 修改: 使颜色更淡
+                edgecolors="black",
+                linewidth=1.0,  # 增加边框宽度
+                transform=ccrs.PlateCarree(),
+                zorder=10  # 设置高 zorder，确保点在最上层
+            )
+        ax_loc.tick_params(axis='both', which='major', labelsize='xx-small')
+        ax_loc.spines[['top', 'right']].set_visible(False)
+        ax_loc.spines[['left', 'bottom']].set_linewidth(0.5)
 
         # 添加跑步者图片
         img = plt.imread("runner.png")
         ax.add_artist(
             AnnotationBbox(
-                OffsetImage(img, zoom=0.03),
-                (0.95, 0.05),
+                OffsetImage(img, zoom=0.015),
+                (0.98, 0.68),
                 xycoords="axes fraction",
                 frameon=False,
             )
