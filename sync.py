@@ -404,7 +404,7 @@ def main():
     combined = merge_and_write(mi, strava)
 
     # 4) 生成 svg（展示最近 30 条）
-    generate_svg(combined, SVG_OUTPUT_FILE, max_items=30)
+    # generate_svg(combined, SVG_OUTPUT_FILE, max_items=30)
 
     # 5) 导出 CSV
     export_csv(combined, CSV_OUTPUT_FILE)
