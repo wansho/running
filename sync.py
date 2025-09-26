@@ -43,7 +43,7 @@ logger = logging.getLogger("running_sync")
 strava_client = stravalib.Client()
 
 def export_csv(records, out_path):
-    """导出 CSV 文件: DT, distance(Km), heart, pace"""
+    """导出 CSV 文件: DT, distance(Km), heart, pace, start_lat, start_lng"""
     if not records:
         logger.warning("没有可导出的数据")
         return
@@ -51,13 +51,15 @@ def export_csv(records, out_path):
     with open(out_path, "w", encoding="utf8", newline="") as fw:
         writer = csv.writer(fw, delimiter=",")
         # 写表头
-        writer.writerow(["DT", "distance(Km)", "heart", "pace"])
+        writer.writerow(["DT", "distance(Km)", "heart", "pace", "start_lat", "start_lng"])
 
         for r in records:
             dt = r.get("start_date_local") or r.get("start_date") or ""
             dist_km = (r.get("distance") or 0) / 1000.0
             pace = r.get("pace") or "-"
-            writer.writerow([dt, f"{dist_km:.2f}", 120, pace])
+            start_lat = r.get("start_lat", "")
+            start_lng = r.get("start_lng", "")
+            writer.writerow([dt, f"{dist_km:.2f}", 120, pace, start_lat, start_lng])
 
     logger.info("写出 CSV 文件：%s (records=%d)", out_path, len(records))
 
@@ -227,13 +229,22 @@ def parse_activity(activity):
         "type": str(activity.sport_type.root),
         "start_date": sd,
         "start_date_local": sdl,
-        "location_country": None,
+        "location_country": activity.location_country,
         "average_heartrate": getattr(activity, "average_heartrate", None),
         "average_speed": avg_speed,
         "pace": pace,
         "summary_polyline": None,
         "source": "strava",
     }
+
+    # 添加经纬度，如果存在
+    if activity.start_latlng:
+        try:
+            rec["start_lat"] = activity.start_latlng.lat
+            rec["start_lng"] = activity.start_latlng.lon
+        except Exception:
+            pass  # 如果无法提取，不添加
+
     return rec
 
 
@@ -300,99 +311,6 @@ def merge_and_write(mi_recs, strava_recs):
     return combined_sorted
 
 
-def generate_svg(records, out_path, max_items=30):
-    """
-    用合并后的 records 生成一张 svg 条形图，展示最近 max_items 条记录的距离（km）与配速。
-    """
-    if not records:
-        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120"><text x="10" y="20">No data</text></svg>'
-        Path(out_path).write_text(svg, encoding="utf8")
-        logger.info("生成空 SVG: %s", out_path)
-        return
-
-    # 取最近 max_items 条（按时间排序，取最后面的）
-    # 先尝试按 start_date_local/start_date 解析时间，如果都没有，按原顺序
-    annotated = []
-    for r in records:
-        dt = parse_datetime_safe(r.get("start_date_local") or r.get("start_date") or "")
-        annotated.append((dt, r))
-    # 保持 None 在前，按时间排序后取最近的
-    annotated_sorted = sorted(annotated, key=lambda x: (x[0] is None, x[0] or datetime.min))
-    last = annotated_sorted[-max_items:] if len(annotated_sorted) >= max_items else annotated_sorted
-    last = [r for (_, r) in last]
-
-    # 图形参数
-    w_per_bar = 48
-    gap = 8
-    margin = 40
-    n = len(last)
-    width = margin * 2 + n * w_per_bar + (n - 1) * gap
-    height = 320
-    chart_h = 220
-    chart_y = 60
-
-    # 找到最大距离（km）
-    dists_km = []
-    for r in last:
-        try:
-            dists_km.append((r.get("distance") or 0) / 1000.0)
-        except Exception:
-            dists_km.append(0.0)
-    max_km = max(dists_km) if dists_km else 1.0
-    if max_km <= 0:
-        max_km = 1.0
-
-    # 开始构建 svg
-    svglines = []
-    svglines.append('<?xml version="1.0" encoding="utf-8"?>')
-    svglines.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">')
-    svglines.append('<style>')
-    svglines.append('  .bg{fill:#0f1720;} .label{font-family:Arial, Helvetica, sans-serif;font-size:12px;fill:#cbd5e1;}')
-    svglines.append('  .title{font-family:Arial, Helvetica, sans-serif;font-size:18px;fill:#ffffff;}')
-    svglines.append('  .bar{fill:#60a5fa;} .bar:hover{fill:#3b82f6;} .small{font-size:11px;fill:#94a3b8;}')
-    svglines.append('</style>')
-    svglines.append(f'<rect width="100%" height="100%" fill="#071029"/>')
-
-    # Title / summary
-    total_runs = len(records)
-    total_distance_km = sum(dists_km)
-    svglines.append(f'<text x="{margin}" y="26" class="title">Running stats (last {n} records shown)</text>')
-    svglines.append(f'<text x="{width - margin}" y="26" class="label" text-anchor="end">Total runs: {total_runs}  Total km(shown): {total_distance_km:.2f}</text>')
-
-    # Draw axis line
-    svglines.append(f'<line x1="{margin}" y1="{chart_y + chart_h}" x2="{width - margin}" y2="{chart_y + chart_h}" stroke="#1f2937" stroke-width="1"/>')
-
-    # Bars
-    for i, r in enumerate(last):
-        x = margin + i * (w_per_bar + gap)
-        km = (r.get("distance") or 0) / 1000.0
-        bar_h = (km / max_km) * (chart_h - 20)
-        y = chart_y + (chart_h - bar_h)
-        # bar rect
-        svglines.append(f'<rect class="bar" x="{x}" y="{y}" width="{w_per_bar}" height="{bar_h}" rx="4" />')
-        # distance label above bar
-        svglines.append(f'<text x="{x + w_per_bar/2}" y="{y - 6}" class="label" text-anchor="middle">{km:.2f} km</text>')
-        # date label below
-        sd = r.get("start_date_local") or r.get("start_date") or ""
-        sd_short = ""
-        dt = parse_datetime_safe(sd)
-        if dt:
-            sd_short = dt.strftime("%m-%d")
-        else:
-            sd_short = sd[:10]
-        svglines.append(f'<text x="{x + w_per_bar/2}" y="{chart_y + chart_h + 16}" class="small" text-anchor="middle">{sd_short}</text>')
-        # pace label
-        pace = r.get("pace") or "-"
-        svglines.append(f'<text x="{x + w_per_bar/2}" y="{y + max(12, bar_h/2)}" class="small" text-anchor="middle">{pace}</text>')
-
-    # footer / legend
-    svglines.append(f'<text x="{margin}" y="{height - 10}" class="small">Generated by sync_and_draw.py</text>')
-    svglines.append('</svg>')
-
-    Path(out_path).write_text("\n".join(svglines), encoding="utf8")
-    logger.info("生成 SVG: %s", out_path)
-
-
 def main():
     # 1) 解析小米
     mi = parse_mi_records()
@@ -402,9 +320,6 @@ def main():
 
     # 3) 合并并写出 combined json
     combined = merge_and_write(mi, strava)
-
-    # 4) 生成 svg（展示最近 30 条）
-    # generate_svg(combined, SVG_OUTPUT_FILE, max_items=30)
 
     # 5) 导出 CSV
     export_csv(combined, CSV_OUTPUT_FILE)
