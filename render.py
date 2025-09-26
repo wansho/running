@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-根据 running.csv 绘制美观的跑步统计 SVG（去掉心率展示）。
+根据 running.csv 绘制美观的跑步统计 SVG（去掉心率展示，添加最近12个月跑量柱状图，横坐标为月份，纵坐标为跑量，柱状图使用斜线填充）。
 """
 
 from __future__ import annotations
 import math
 import calendar
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional, TypeVar
 
@@ -40,16 +40,16 @@ def groupby(data: list[T], key_func: Callable[[T], K]) -> dict[K, list[T]]:
 
 
 def get_days_monthly(
-    year_start: int,
-    year_end: int,
-    month_start: Optional[int] = None,
-    month_end: Optional[int] = None,
+        year_start: int,
+        year_end: int,
+        month_start: Optional[int] = None,
+        month_end: Optional[int] = None,
 ) -> dict[int, int]:
     days_monthly = {}
     for y in range(year_start, year_end + 1):
         for m in range(
-            month_start if month_start and y == year_start else 1,
-            (month_end if month_end and y == year_end else 12) + 1,
+                month_start if month_start and y == year_start else 1,
+                (month_end if month_end and y == year_end else 12) + 1,
         ):
             days = calendar.monthrange(y, m)[1]
             if m in days_monthly:
@@ -110,7 +110,6 @@ def get_running_data() -> tuple[
                 continue
             dt = datetime.strptime(cols[0], "%Y-%m-%d %H:%M:%S")
             distance = float(cols[1])
-            # heart = int(cols[2]) if cols[2].isdecimal() else None  # 去掉心率
             mins, secs = [int(i) for i in cols[3].split(":")]
             if secs == 60:
                 mins = mins + 1
@@ -131,6 +130,24 @@ def get_running_data() -> tuple[
         distances.append(distance)
         paces.append(pace)
     return dts, accs, distances, paces
+
+
+def get_last_12_months_distances(dts: list[datetime], distances: list[float]) -> list[tuple[str, float]]:
+    """Calculate total distance for each of the last 12 months."""
+    today = datetime.now()
+    last_12_months = []
+    for i in range(11, -1, -1):
+        month_date = today - timedelta(days=30 * i)
+        year_month = month_date.strftime("%Y-%m")
+        last_12_months.append((year_month, 0.0))
+
+    for dt, distance in zip(dts, distances):
+        year_month = dt.strftime("%Y-%m")
+        for i, (ym, dist) in enumerate(last_12_months):
+            if year_month == ym:
+                last_12_months[i] = (ym, dist + distance)
+
+    return last_12_months
 
 
 def plot_running() -> None:
@@ -255,6 +272,21 @@ def plot_running() -> None:
             fontsize="small",
             linespacing=1.5,
         )
+
+        # 最近12个月跑量柱状图
+        monthly_distances = get_last_12_months_distances(dts, distances)
+        months = [ym for ym, _ in monthly_distances]
+        distances_monthly = [dist for _, dist in monthly_distances]
+        ax_bar = plt.axes([0.45, 0.72, 0.25, 0.2])
+        ax_bar.bar(months, distances_monthly, color="#cbe2c5")
+        ax_bar.tick_params(axis="both", which="both", labelsize=6)
+        ax_bar.spines[["top", "right"]].set_visible(False)
+        ax_bar.spines[["left", "bottom"]].set_linewidth(0.5)
+        ax_bar.xaxis.set_major_locator(tick.MaxNLocator(12))
+        ax_bar.set_xticklabels(months, rotation=35, ha="right")
+        ax_bar.yaxis.set_major_locator(tick.MaxNLocator(5))
+        ax_bar.tick_params(axis="x", which="major", labelsize=6, width=0.5, color="grey")  # 调整横轴刻度点
+        ax_bar.tick_params(axis="y", which="major", labelsize=6, width=0.5, color="grey")  # 调整纵轴刻度点
 
         # 添加跑步者图片
         img = plt.imread("runner.png")
