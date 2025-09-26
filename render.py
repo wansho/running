@@ -10,6 +10,7 @@ import calendar
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional, TypeVar
+from dateutil.relativedelta import relativedelta
 
 import matplotlib
 import matplotlib.dates as mdates
@@ -136,19 +137,24 @@ def get_last_12_months_distances(dts: list[datetime], distances: list[float]) ->
     """Calculate total distance for each of the last 12 months."""
     today = datetime.now()
     last_12_months = []
+
+    # 生成最近12个月的年月列表
     for i in range(11, -1, -1):
-        month_date = today - timedelta(days=30 * i)
+        month_date = today - relativedelta(months=i)
         year_month = month_date.strftime("%Y-%m")
         last_12_months.append((year_month, 0.0))
 
-    for dt, distance in zip(dts, distances):
-        year_month = dt.strftime("%Y-%m")
-        for i, (ym, dist) in enumerate(last_12_months):
-            if year_month == ym:
-                last_12_months[i] = (ym, dist + distance)
+    # 按年月分组跑步数据
+    monthly_distances = groupby(zip(dts, distances), lambda x: x[0].strftime("%Y-%m"))
 
+    # 累加每个月的跑量
+    for year_month, _ in last_12_months:
+        if year_month in monthly_distances:
+            total_distance = sum(dist for _, dist in monthly_distances[year_month])
+            last_12_months = [(ym, total_distance if ym == year_month else dist) for ym, dist in last_12_months]
+
+    print("Generated months:", last_12_months)
     return last_12_months
-
 
 def plot_running() -> None:
     with plt.xkcd():
@@ -283,7 +289,8 @@ def plot_running() -> None:
         ax_bar.spines[["top", "right"]].set_visible(False)
         ax_bar.spines[["left", "bottom"]].set_linewidth(0.5)
         ax_bar.xaxis.set_major_locator(tick.MaxNLocator(12))
-        ax_bar.set_xticklabels(months, rotation=35, ha="right")
+        ax_bar.set_xticks(range(len(months)))  # 明确设置横轴刻度位置
+        ax_bar.set_xticklabels(months, rotation=45, ha="right", fontsize=6)  # 调整旋转角度
         ax_bar.yaxis.set_major_locator(tick.MaxNLocator(5))
         ax_bar.tick_params(axis="x", which="major", labelsize=6, width=0.5, color="grey")  # 调整横轴刻度点
         ax_bar.tick_params(axis="y", which="major", labelsize=6, width=0.5, color="grey")  # 调整纵轴刻度点
