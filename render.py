@@ -367,21 +367,22 @@ def plot_running() -> None:
             dates_num = mdates.date2num(dts)
             norm = plt.Normalize(min(dates_num), max(dates_num))
             colors = plt.cm.coolwarm(norm(dates_num))
-            sizes = [max(10, d * 8) for d in distances]  # 修改: 调小点大小
+            sizes = [max(5, d * 4) for d in distances]
             ax_loc.scatter(
                 start_lngs,
                 start_lats,
                 s=sizes,
                 c=colors,
-                alpha=0.5,  # 修改: 使颜色更淡
+                alpha=0.3,  # 颜色更淡
                 edgecolors="black",
-                linewidth=1.0,  # 增加边框宽度
+                linewidth=0.6,  # 地图上的点的绘制的粗细
                 transform=ccrs.PlateCarree(),
-                zorder=10  # 设置高 zorder，确保点在最上层
+                zorder=10
             )
         ax_loc.tick_params(axis='both', which='major', labelsize='xx-small')
         ax_loc.spines[['top', 'right']].set_visible(False)
-        ax_loc.spines[['left', 'bottom']].set_linewidth(0.5)
+        ax_loc.spines[['left', 'bottom']].set_linewidth(0.1)
+        ax_loc.spines[['left', 'bottom']].set_color("grey")
 
         # 添加跑步者图片
         img = plt.imread("runner.png")
