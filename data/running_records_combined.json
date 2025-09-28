@@ -13559,6 +13559,22 @@
       "pace": "8:35",
       "summary_polyline": null,
       "source": "strava"
+    },
+    {
+      "run_id": 15958311738,
+      "name": "Morning Run",
+      "distance": 2900.3,
+      "moving_time": 1243.0,
+      "elapsed_time": 1269.0,
+      "type": "Run",
+      "start_date": "2025-09-27 22:49:29",
+      "start_date_local": "2025-09-28 06:49:29",
+      "location_country": null,
+      "average_heartrate": 171.1,
+      "average_speed": 2.333,
+      "pace": "7:09",
+      "summary_polyline": null,
+      "source": "strava"
     }
   ],
   "data_source": "combined"
