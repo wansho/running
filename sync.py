@@ -79,90 +79,95 @@ def calculate_pace(distance_m, moving_time_s):
 
 def parse_mi_records():
     """解析小米导出文件 -> 返回 list of dict 与写文件到 MI_OUTPUT_FILE"""
-    results = []
-    run_id = 100000  # 与 strava id 区分开
+    # results = []
+    # run_id = 100000  # 与 strava id 区分开
+    #
+    # if not Path(RECORDS_XIAOMI_HIS).exists():
+    #     logger.warning("小米导出文件不存在：%s，跳过解析", RECORDS_XIAOMI_HIS)
+    #     return results
+    #
+    # with open(RECORDS_XIAOMI_HIS, "r", encoding="utf8") as fr:
+    #     lines = fr.readlines()
+    #
+    # if len(lines) <= 1:
+    #     logger.info("小米导出文件只有表头或为空")
+    #     return results
+    #
+    # raw = lines[1:]
+    # logger.info("解析小米记录：%d 行", len(raw))
+    #
+    # for line in raw:
+    #     parts = line.strip().split()
+    #     if len(parts) < 8:
+    #         logger.warning("跳过格式错误行: %s", line.strip())
+    #         continue
+    #     try:
+    #         name = parts[0]
+    #         # 原始 distance 单位为 km，转换为米
+    #         distance = round(float(parts[1]) * 1000.0, 1)
+    #     except Exception:
+    #         logger.warning("distance 解析失败，跳过: %s", line.strip())
+    #         continue
+    #
+    #     # parse moving_time: 形如 mm:ss 或 hh:mm:ss
+    #     mt = parts[2]
+    #     moving_time = 0
+    #     try:
+    #         segs = mt.split(":")
+    #         if len(segs) == 2:
+    #             moving_time = int(segs[0]) * 60 + int(segs[1])
+    #         elif len(segs) == 3:
+    #             moving_time = int(segs[0]) * 3600 + int(segs[1]) * 60 + int(segs[2])
+    #         else:
+    #             moving_time = int(float(mt))
+    #     except Exception:
+    #         moving_time = 0
+    #
+    #     elapsed_time = moving_time
+    #     start_date = parts[3] + " " + parts[4]
+    #     # 尽量确保与 strava 的格式一致：YYYY-MM-DD HH:MM:SS
+    #     # 若用户导出不是这个格式，合并时会尝试解析，失败则放原始字符串
+    #     start_date_local = start_date
+    #     location_country = parts[5]
+    #     average_heartrate = None if parts[6].lower() == "null" else None
+    #     try:
+    #         if parts[6].lower() != "null":
+    #             average_heartrate = int(parts[6])
+    #     except Exception:
+    #         average_heartrate = None
+    #
+    #     average_speed = parts[7]  # 保留原始展示
+    #     pace = calculate_pace(distance, moving_time)
+    #
+    #     rec = {
+    #         "run_id": run_id,
+    #         "name": name,
+    #         "distance": distance,
+    #         "moving_time": moving_time,
+    #         "elapsed_time": elapsed_time,
+    #         "type": "Run",
+    #         "start_date": start_date,
+    #         "start_date_local": start_date_local,
+    #         "location_country": location_country,
+    #         "average_heartrate": average_heartrate,
+    #         "average_speed": average_speed,
+    #         "pace": pace,
+    #         "summary_polyline": None,
+    #         "source": "mi",
+    #     }
+    #     results.append(rec)
+    #     run_id += 1
 
-    if not Path(RECORDS_XIAOMI_HIS).exists():
-        logger.warning("小米导出文件不存在：%s，跳过解析", RECORDS_XIAOMI_HIS)
-        return results
-
-    with open(RECORDS_XIAOMI_HIS, "r", encoding="utf8") as fr:
-        lines = fr.readlines()
-
-    if len(lines) <= 1:
-        logger.info("小米导出文件只有表头或为空")
-        return results
-
-    raw = lines[1:]
-    logger.info("解析小米记录：%d 行", len(raw))
-
-    for line in raw:
-        parts = line.strip().split()
-        if len(parts) < 8:
-            logger.warning("跳过格式错误行: %s", line.strip())
-            continue
-        try:
-            name = parts[0]
-            # 原始 distance 单位为 km，转换为米
-            distance = round(float(parts[1]) * 1000.0, 1)
-        except Exception:
-            logger.warning("distance 解析失败，跳过: %s", line.strip())
-            continue
-
-        # parse moving_time: 形如 mm:ss 或 hh:mm:ss
-        mt = parts[2]
-        moving_time = 0
-        try:
-            segs = mt.split(":")
-            if len(segs) == 2:
-                moving_time = int(segs[0]) * 60 + int(segs[1])
-            elif len(segs) == 3:
-                moving_time = int(segs[0]) * 3600 + int(segs[1]) * 60 + int(segs[2])
-            else:
-                moving_time = int(float(mt))
-        except Exception:
-            moving_time = 0
-
-        elapsed_time = moving_time
-        start_date = parts[3] + " " + parts[4]
-        # 尽量确保与 strava 的格式一致：YYYY-MM-DD HH:MM:SS
-        # 若用户导出不是这个格式，合并时会尝试解析，失败则放原始字符串
-        start_date_local = start_date
-        location_country = parts[5]
-        average_heartrate = None if parts[6].lower() == "null" else None
-        try:
-            if parts[6].lower() != "null":
-                average_heartrate = int(parts[6])
-        except Exception:
-            average_heartrate = None
-
-        average_speed = parts[7]  # 保留原始展示
-        pace = calculate_pace(distance, moving_time)
-
-        rec = {
-            "run_id": run_id,
-            "name": name,
-            "distance": distance,
-            "moving_time": moving_time,
-            "elapsed_time": elapsed_time,
-            "type": "Run",
-            "start_date": start_date,
-            "start_date_local": start_date_local,
-            "location_country": location_country,
-            "average_heartrate": average_heartrate,
-            "average_speed": average_speed,
-            "pace": pace,
-            "summary_polyline": None,
-            "source": "mi",
-        }
-        results.append(rec)
-        run_id += 1
 
     # 写出 MI 输出（保留原样）
-    with open(MI_OUTPUT_FILE, "w", encoding="utf8") as fw:
-        json.dump({"records": results, "data_source": "manual_add"}, fw, indent=2, ensure_ascii=False)
-    logger.info("写出小米解析文件：%s (records=%d)", MI_OUTPUT_FILE, len(results))
-    return results
+    # with open(MI_OUTPUT_FILE, "w", encoding="utf8") as fw:
+    #     json.dump({"records": results, "data_source": "manual_add"}, fw, indent=2, ensure_ascii=False)
+    # logger.info("写出小米解析文件：%s (records=%d)", MI_OUTPUT_FILE, len(results))
+    # return results
+
+    with open(MI_OUTPUT_FILE, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+        return data["records"]
 
 
 def check_access():
