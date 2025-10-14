@@ -104,7 +104,7 @@ def make_circular(lst: list[T]) -> list[T]:
 
 
 def get_running_data() -> tuple[
-    list[datetime], list[float], list[float], list[int], list[float], list[float]
+    list[datetime], list[float], list[float], list[int], list[float | None], list[float | None]
 ]:
     """返回 dts, accs, distances, paces, start_lats, start_lngs"""
     data = []
@@ -119,19 +119,18 @@ def get_running_data() -> tuple[
             if secs == 60:
                 mins = mins + 1
                 secs = 0
-            # 处理纬度和经度，允许为空
+            # 处理纬度和经度，允许为空或无效
             start_lat = None
             start_lng = None
             try:
-                start_lat = float(cols[4]) if len(cols) > 4 and cols[4].strip() else None
-                start_lng = float(cols[5]) if len(cols) > 5 and cols[5].strip() else None
-                # 如果纬度或经度为空或无效，跳过该行
-                if start_lat is None or start_lng is None:
-                    print(f"Skipping row with DT={cols[0]} due to invalid lat/lng: {cols[4:6]}")
-                    continue
+                if len(cols) > 4 and cols[4].strip():
+                    start_lat = float(cols[4])
+                if len(cols) > 5 and cols[5].strip():
+                    start_lng = float(cols[5])
             except ValueError as e:
-                print(f"Skipping row with DT={cols[0]} due to ValueError: {e}, cols={cols[4:6]}")
-                continue
+                print(f"Invalid lat/lng for DT={cols[0]}: {e}, cols={cols[4:6]}")
+                start_lat = None
+                start_lng = None
             if distance <= 0.0:
                 continue
             data.append((dt, distance, mins * 60 + secs, start_lat, start_lng))
@@ -149,12 +148,11 @@ def get_running_data() -> tuple[
         accs.append(acc)
         distances.append(distance)
         paces.append(pace)
-        # 仅当经纬度有效时才添加到列表
-        if start_lat is not None and start_lng is not None:
-            start_lats.append(start_lat)
-            start_lngs.append(start_lng)
+        start_lats.append(start_lat)
+        start_lngs.append(start_lng)
     # 调试: 打印有效点的数量
-    print(f"Total valid points: {len(start_lats)}")
+    valid_count = sum(1 for lat, lng in zip(start_lats, start_lngs) if lat is not None and lng is not None)
+    print(f"Total valid points: {valid_count}")
     return dts, accs, distances, paces, start_lats, start_lngs
 
 
@@ -310,7 +308,7 @@ def plot_running() -> None:
         months = [ym for ym, _ in monthly_distances]
         distances_monthly = [dist for _, dist in monthly_distances]
         ax_bar = plt.axes([0.45, 0.72, 0.25, 0.2])
-        ax_bar.bar(months, distances_monthly, color="#cbe2c5")
+        ax_bar.bar(months, distances_monthly, color="#cbe2c5", hatch='//')
         ax_bar.tick_params(axis="both", which="both", labelsize=6)
         ax_bar.spines[["top", "right"]].set_visible(False)
         ax_bar.spines[["left", "bottom"]].set_linewidth(0.5)
@@ -349,13 +347,17 @@ def plot_running() -> None:
         #     linewidth=0.5,
         #     zorder=2
         # ))
+        # 过滤有效经纬度点
+        valid_indices = [i for i in range(len(start_lats)) if start_lats[i] is not None and start_lngs[i] is not None]
+        valid_lats = [start_lats[i] for i in valid_indices]
+        valid_lngs = [start_lngs[i] for i in valid_indices]
         # 调试: 打印经纬度范围和点数量
-        if start_lats and start_lngs:
-            lat_min, lat_max = min(start_lats), max(start_lats)
-            lng_min, lng_max = min(start_lngs), max(start_lngs)
+        if valid_lats:
+            lat_min, lat_max = min(valid_lats), max(valid_lats)
+            lng_min, lng_max = min(valid_lngs), max(valid_lngs)
             print(f"Lat range: {lat_min:.4f} to {lat_max:.4f}")
             print(f"Lng range: {lng_min:.4f} to {lng_max:.4f}")
-            print(f"Number of points to plot: {len(start_lats)}")
+            print(f"Number of points to plot: {len(valid_lats)}")
             # 设置地图范围，添加动态边距
             lat_margin = 1.0 if lat_max - lat_min < 10 else 2.0
             lng_margin = 1.0 if lng_max - lng_min < 10 else 2.0
@@ -363,18 +365,15 @@ def plot_running() -> None:
                 [lng_min - lng_margin, lng_max + lng_margin, lat_min - lat_margin, lat_max + lat_margin],
                 crs=ccrs.PlateCarree()
             )
-        else:
-            print("No valid lat/lng data to plot, using default extent")
-            ax_loc.set_extent([-180, 180, -90, 90], crs=ccrs.PlateCarree())
-        # 绘制跑步起始点，设置高 zorder
-        if start_lats and start_lngs:
             dates_num = mdates.date2num(dts)
-            norm = plt.Normalize(min(dates_num), max(dates_num))
-            colors = plt.cm.coolwarm(norm(dates_num))
-            sizes = [max(5, d * 4) for d in distances]
+            valid_dates_num = [dates_num[i] for i in valid_indices]
+            norm = plt.Normalize(min(valid_dates_num), max(valid_dates_num))
+            colors = plt.cm.coolwarm(norm(np.array(valid_dates_num)))
+            valid_distances = [distances[i] for i in valid_indices]
+            sizes = [max(5, d * 4) for d in valid_distances]
             ax_loc.scatter(
-                start_lngs,
-                start_lats,
+                valid_lngs,
+                valid_lats,
                 s=sizes,
                 c=colors,
                 alpha=0.3,  # 颜色更淡
@@ -383,6 +382,9 @@ def plot_running() -> None:
                 transform=ccrs.PlateCarree(),
                 zorder=10
             )
+        else:
+            print("No valid lat/lng data to plot, using default extent")
+            ax_loc.set_extent([-180, 180, -90, 90], crs=ccrs.PlateCarree())
         ax_loc.tick_params(axis='both', which='major', labelsize='xx-small')
         ax_loc.spines[['top', 'right']].set_visible(False)
         ax_loc.spines[['left', 'bottom']].set_linewidth(0.1)
