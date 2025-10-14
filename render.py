@@ -119,7 +119,9 @@ def get_running_data() -> tuple[
             if secs == 60:
                 mins = mins + 1
                 secs = 0
-            # 处理纬度和经度，跳过空值或无效值
+            # 处理纬度和经度，允许为空
+            start_lat = None
+            start_lng = None
             try:
                 start_lat = float(cols[4]) if len(cols) > 4 and cols[4].strip() else None
                 start_lng = float(cols[5]) if len(cols) > 5 and cols[5].strip() else None
@@ -147,8 +149,10 @@ def get_running_data() -> tuple[
         accs.append(acc)
         distances.append(distance)
         paces.append(pace)
-        start_lats.append(start_lat)
-        start_lngs.append(start_lng)
+        # 仅当经纬度有效时才添加到列表
+        if start_lat is not None and start_lng is not None:
+            start_lats.append(start_lat)
+            start_lngs.append(start_lng)
     # 调试: 打印有效点的数量
     print(f"Total valid points: {len(start_lats)}")
     return dts, accs, distances, paces, start_lats, start_lngs
