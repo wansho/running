@@ -14203,6 +14203,24 @@
       "pace": "9:37",
       "summary_polyline": null,
       "source": "strava"
+    },
+    {
+      "run_id": 16409454726,
+      "name": "晨间跑步",
+      "distance": 2349.7,
+      "moving_time": 1289.0,
+      "elapsed_time": 1326.0,
+      "type": "Run",
+      "start_date": "2025-11-09 22:22:48",
+      "start_date_local": "2025-11-10 06:22:48",
+      "location_country": null,
+      "average_heartrate": null,
+      "average_speed": 1.823,
+      "pace": "9:09",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.830634,
+      "start_lng": 118.777466
     }
   ],
   "data_source": "combined"
