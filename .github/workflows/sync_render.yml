@@ -27,17 +27,12 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.11.4
-      - name: Get pip cache dir
-        id: pip-cache
-        run: |
-          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-      - name: pip cache
-        uses: actions/cache@v3
+      - name: Cache pip
+        uses: actions/cache@v4
         with:
-          path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ runner.arch }}-v1
+          restore-keys: ${{ runner.os }}-pip-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
