@@ -14537,6 +14537,24 @@
       "source": "strava",
       "start_lat": 31.863495,
       "start_lng": 118.8377
+    },
+    {
+      "run_id": 16919768331,
+      "name": "Afternoon Run",
+      "distance": 10012.0,
+      "moving_time": 4854.0,
+      "elapsed_time": 5441.0,
+      "type": "Run",
+      "start_date": "2026-01-03 05:43:08",
+      "start_date_local": "2026-01-03 13:43:08",
+      "location_country": null,
+      "average_heartrate": 153.1,
+      "average_speed": 2.063,
+      "pace": "8:05",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.863955,
+      "start_lng": 118.839988
     }
   ],
   "data_source": "combined"
