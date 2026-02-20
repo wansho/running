@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-根据 running.csv 绘制美观的跑步统计 SVG（去掉心率展示，添加最近12个月跑量柱状图，横坐标为月份，纵坐标为跑量，柱状图使用斜线填充，添加地图上的跑步起始点）。
+根据 running.csv 绘制美观的跑步统计 SVG（配速趋势图、地图热力图、最近12个月跑量柱状图、出勤率雷达图等）。
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 import numpy as np
+from scipy.ndimage import gaussian_filter
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.io.shapereader import Reader
@@ -197,51 +198,6 @@ def plot_running() -> None:
 
         ax.plot(dts, accs, color="#d62728")
 
-        # 配速小提琴图
-        ax_pace = plt.axes([0.1, 0.72, 0.3, 0.1])
-        v_all = ax_pace.violinplot(
-            paces,
-            orientation="horizontal",
-            showmedians=True,
-            showmeans=True,
-            showextrema=False,
-            side="low",
-        )
-        paces_this_year = [paces[i] for i, dt in enumerate(dts) if dt.year == this_year]
-        v_year = ax_pace.violinplot(
-            paces_this_year,
-            orientation="horizontal",
-            showmedians=True,
-            showmeans=True,
-            showextrema=False,
-            side="high",
-        )
-        for body in v_all["bodies"]:
-            body.set_facecolor("#ff7f0e")
-            body.set_edgecolor("#ff7f0e")
-        for body in v_year["bodies"]:
-            body.set_facecolor("#2ca02c")
-            body.set_edgecolor("#2ca02c")
-        v_all["cmedians"].set_linewidth(1)
-        v_all["cmedians"].set_color("#ff7f0e")
-        v_year["cmedians"].set_linewidth(1)
-        v_year["cmedians"].set_color("#2ca02c")
-        v_all["cmeans"].set_linewidth(1)
-        v_all["cmeans"].set_color("#ff7f0e")
-        v_year["cmeans"].set_linewidth(1)
-        v_year["cmeans"].set_color("#2ca02c")
-        v_all["cmeans"].set_linestyle("--")
-        v_year["cmeans"].set_linestyle("--")
-
-        paces_percentile = np.percentile(paces, [5, 95])
-        ax_pace.set_xlim(tuple(paces_percentile))
-        ax_pace.set_yticklabels([])
-        ax_pace.spines[["top", "right", "left", "bottom"]].set_visible(False)
-        ax_pace.tick_params(axis="x", which="major", labelsize="xx-small", length=2)
-        ax_pace.tick_params(axis="y", which="major", labelsize="xx-small", length=0)
-        ax_pace.xaxis.set_major_locator(tick.MaxNLocator(6))
-        ax_pace.xaxis.set_major_formatter(tick.FuncFormatter(pace_label_fmt))
-
         # 出勤率雷达图
         attendance_all, attendance_this_year = tuple(
             map(make_circular, get_attendance(dts))
@@ -266,9 +222,9 @@ def plot_running() -> None:
         angles_rad = make_circular([a * math.pi / 180 for a in range(0, 360, 30)])
 
         ax_att = plt.axes([0.1, 0.28, 0.25, 0.25], polar=True)
-        ax_att.plot(angles_rad, attendance_all, "-", linewidth=1, color="#ff7f0e")
+        ax_att.plot(angles_rad, attendance_all, "-", linewidth=1, color="#ff7f0e", label="all")
         ax_att.fill(angles_rad, attendance_all, alpha=0.15, zorder=2, color="#ff7f0e")
-        ax_att.plot(angles_rad, attendance_this_year, "-", linewidth=1, color="#2ca02c")
+        ax_att.plot(angles_rad, attendance_this_year, "-", linewidth=1, color="#2ca02c", label="this year")
         ax_att.fill(
             angles_rad, attendance_this_year, alpha=0.15, zorder=3, color="#2ca02c"
         )
@@ -282,6 +238,8 @@ def plot_running() -> None:
         ax_att.set_yticklabels(["", "", "", "", "100%"])
         ax_att.set_ylim(0, 100)
         ax_att.grid(visible=True, lw=0.5, ls="--")
+        # 添加标题
+        ax_att.set_title("attendance rate", fontsize="xx-small", pad=20)
 
         # 信息文字
         years = dts[-1].year - dts[0].year + 1
@@ -307,7 +265,7 @@ def plot_running() -> None:
         monthly_distances = get_last_12_months_distances(dts, distances)
         months = [ym for ym, _ in monthly_distances]
         distances_monthly = [dist for _, dist in monthly_distances]
-        ax_bar = plt.axes([0.45, 0.72, 0.25, 0.2])
+        ax_bar = plt.axes([0.48, 0.72, 0.25, 0.2])
         ax_bar.bar(months, distances_monthly, color="#cbe2c5", hatch='//')
         ax_bar.tick_params(axis="both", which="both", labelsize=6)
         ax_bar.spines[["top", "right"]].set_visible(False)
@@ -319,7 +277,30 @@ def plot_running() -> None:
         ax_bar.tick_params(axis="x", which="major", labelsize=6, width=0.5, color="grey")
         ax_bar.tick_params(axis="y", which="major", labelsize=6, width=0.5, color="grey")
 
-        # 地图上的跑步起始点（使用本地 shapefile）
+        # 配速趋势图（移到左上角，原小提琴图位置）
+        ax_pace_trend = plt.axes([0.14, 0.72, 0.28, 0.15])
+        ax_pace_trend.spines[["top", "right"]].set_visible(False)
+        ax_pace_trend.spines[["left", "bottom"]].set_linewidth(0.5)
+        # 绘制配速散点（使用橙色系，与原来小提琴图配色一致）
+        ax_pace_trend.scatter(dts, paces, s=4, c="#ff7f0e", alpha=0.4)
+        # 计算并绘制移动平均趋势线（窗口大小为10次跑步）
+        window_size = min(10, len(paces) // 3) if len(paces) > 10 else 3
+        if len(paces) >= window_size:
+            moving_avg = np.convolve(paces, np.ones(window_size)/window_size, mode='valid')
+            # 计算对应的日期
+            valid_dts = dts[window_size-1:]
+            ax_pace_trend.plot(valid_dts, moving_avg, color="#7dd87d", linewidth=1.5)
+        ax_pace_trend.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=5))
+        ax_pace_trend.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+        ax_pace_trend.tick_params(axis="both", which="major", labelsize=6, width=0.5, color="grey")
+        ax_pace_trend.yaxis.set_major_locator(tick.MaxNLocator(5))
+        ax_pace_trend.yaxis.set_major_formatter(tick.FuncFormatter(pace_label_fmt))
+        # 设置y轴范围为配速的5%-95%分位数
+        pace_low, pace_high = np.percentile(paces, [5, 95])
+        ax_pace_trend.set_ylim(pace_low, pace_high)
+        ax_pace_trend.invert_yaxis()  # 配速越小越快，翻转y轴
+
+        # 地图上的跑步起始点热力图（使用本地 shapefile）
         ax_loc = plt.axes([0.75, 0.1, 0.3, 0.3], projection=ccrs.PlateCarree())
         # 使用本地 shapefile，设置较低 zorder
         ax_loc.add_feature(cfeature.ShapelyFeature(
@@ -341,12 +322,6 @@ def plot_running() -> None:
             facecolor="#9b9b9b",
             zorder=2
         ))
-        # ax_loc.add_feature(cfeature.ShapelyFeature(
-        #     Reader(SHAPEFILE_DIR / "ne_50m_admin_0_boundary_lines_land.shp").geometries(),
-        #     ccrs.PlateCarree(),
-        #     linewidth=0.5,
-        #     zorder=2
-        # ))
         # 过滤有效经纬度点
         valid_indices = [i for i in range(len(start_lats)) if start_lats[i] is not None and start_lngs[i] is not None]
         valid_lats = [start_lats[i] for i in valid_indices]
@@ -359,26 +334,56 @@ def plot_running() -> None:
             print(f"Lng range: {lng_min:.4f} to {lng_max:.4f}")
             print(f"Number of points to plot: {len(valid_lats)}")
             # 设置地图范围，添加动态边距
-            lat_margin = 1.0 if lat_max - lat_min < 10 else 2.0
-            lng_margin = 1.0 if lng_max - lng_min < 10 else 2.0
+            lat_margin = 0.5 if lat_max - lat_min < 5 else 1.0
+            lng_margin = 0.5 if lng_max - lng_min < 5 else 1.0
             ax_loc.set_extent(
                 [lng_min - lng_margin, lng_max + lng_margin, lat_min - lat_margin, lat_max + lat_margin],
                 crs=ccrs.PlateCarree()
             )
+
+            # 创建热力图网格
+            grid_size = 100
+            lng_grid = np.linspace(lng_min - lng_margin, lng_max + lng_margin, grid_size)
+            lat_grid = np.linspace(lat_min - lat_margin, lat_max + lat_margin, grid_size)
+            heatmap = np.zeros((grid_size, grid_size))
+
+            # 将点转换为网格坐标并累加
+            for lng, lat in zip(valid_lngs, valid_lats):
+                lng_idx = int((lng - (lng_min - lng_margin)) / (lng_max + lng_margin - (lng_min - lng_margin)) * (grid_size - 1))
+                lat_idx = int((lat - (lat_min - lat_margin)) / (lat_max + lat_margin - (lat_min - lat_margin)) * (grid_size - 1))
+                lng_idx = max(0, min(grid_size - 1, lng_idx))
+                lat_idx = max(0, min(grid_size - 1, lat_idx))
+                heatmap[lat_idx, lng_idx] += 1
+
+            # 应用高斯模糊创建平滑热力图
+            heatmap = gaussian_filter(heatmap, sigma=3)
+
+            # 绘制热力图（使用掩码让零值区域透明）
+            lng_mesh, lat_mesh = np.meshgrid(lng_grid, lat_grid)
+            # 设置最小显示阈值，避免覆盖整个地图
+            heatmap_masked = np.ma.masked_where(heatmap < 0.1, heatmap)
+            ax_loc.contourf(
+                lng_mesh, lat_mesh, heatmap_masked,
+                levels=15,
+                cmap="YlOrRd",
+                alpha=0.5,
+                transform=ccrs.PlateCarree(),
+                zorder=5
+            )
+
+            # 叠加散点显示具体位置
             dates_num = mdates.date2num(dts)
             valid_dates_num = [dates_num[i] for i in valid_indices]
             norm = plt.Normalize(min(valid_dates_num), max(valid_dates_num))
             colors = plt.cm.coolwarm(norm(np.array(valid_dates_num)))
-            valid_distances = [distances[i] for i in valid_indices]
-            sizes = [max(5, d * 4) for d in valid_distances]
             ax_loc.scatter(
                 valid_lngs,
                 valid_lats,
-                s=sizes,
+                s=8,
                 c=colors,
-                alpha=0.3,  # 颜色更淡
+                alpha=0.5,
                 edgecolors="black",
-                linewidth=0.6,  # 地图上的点的绘制的粗细
+                linewidth=0.3,
                 transform=ccrs.PlateCarree(),
                 zorder=10
             )
