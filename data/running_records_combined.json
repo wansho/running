@@ -14979,6 +14979,24 @@
       "source": "strava",
       "start_lat": 31.861829,
       "start_lng": 118.838664
+    },
+    {
+      "run_id": 17772838787,
+      "name": "晨间跑步",
+      "distance": 3015.1,
+      "moving_time": 1814.0,
+      "elapsed_time": 1891.0,
+      "type": "Run",
+      "start_date": "2026-03-18 22:16:33",
+      "start_date_local": "2026-03-19 06:16:33",
+      "location_country": null,
+      "average_heartrate": null,
+      "average_speed": 1.662,
+      "pace": "10:02",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.862124,
+      "start_lng": 118.838397
     }
   ],
   "data_source": "combined"
