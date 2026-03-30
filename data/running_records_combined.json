@@ -15051,6 +15051,22 @@
       "source": "strava",
       "start_lat": 31.862359,
       "start_lng": 118.838216
+    },
+    {
+      "run_id": 17906831741,
+      "name": "Morning Walk",
+      "distance": 909.7,
+      "moving_time": 697.0,
+      "elapsed_time": 697.0,
+      "type": "Walk",
+      "start_date": "2026-03-29 22:25:13",
+      "start_date_local": "2026-03-30 06:25:13",
+      "location_country": null,
+      "average_heartrate": 120.6,
+      "average_speed": 1.305,
+      "pace": "12:46",
+      "summary_polyline": null,
+      "source": "strava"
     }
   ],
   "data_source": "combined"
