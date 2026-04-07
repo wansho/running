@@ -12007,6 +12007,42 @@
       "source": "strava",
       "start_lat": 31.862005,
       "start_lng": 118.838401
+    },
+    {
+      "run_id": 17995094485,
+      "name": "Afternoon Walk",
+      "distance": 2750.0,
+      "moving_time": 1811.0,
+      "elapsed_time": 2385.0,
+      "type": "Walk",
+      "start_date": "2026-04-06 06:48:52",
+      "start_date_local": "2026-04-06 14:48:52",
+      "location_country": null,
+      "average_heartrate": 120.1,
+      "average_speed": 1.518,
+      "pace": "10:59",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.864192,
+      "start_lng": 118.839894
+    },
+    {
+      "run_id": 18005914315,
+      "name": "Morning Run",
+      "distance": 2776.6,
+      "moving_time": 1619.0,
+      "elapsed_time": 1878.0,
+      "type": "Run",
+      "start_date": "2026-04-06 22:14:24",
+      "start_date_local": "2026-04-07 06:14:24",
+      "location_country": null,
+      "average_heartrate": 126.3,
+      "average_speed": 1.715,
+      "pace": "9:43",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.863133,
+      "start_lng": 118.83951
     }
   ],
   "data_source": "strava_sync"
