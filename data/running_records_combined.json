@@ -15335,6 +15335,24 @@
       "source": "strava",
       "start_lat": 31.863071,
       "start_lng": 118.83954
+    },
+    {
+      "run_id": 18458086721,
+      "name": "Morning Run",
+      "distance": 2911.5,
+      "moving_time": 1547.0,
+      "elapsed_time": 1654.0,
+      "type": "Run",
+      "start_date": "2026-05-10 22:14:01",
+      "start_date_local": "2026-05-11 06:14:01",
+      "location_country": null,
+      "average_heartrate": 132.7,
+      "average_speed": 1.882,
+      "pace": "8:51",
+      "summary_polyline": null,
+      "source": "strava",
+      "start_lat": 31.862155,
+      "start_lng": 118.83835
     }
   ],
   "data_source": "combined"
