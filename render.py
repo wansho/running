@@ -104,6 +104,22 @@ def make_circular(lst: list[T]) -> list[T]:
     return lst
 
 
+def parse_pace_seconds(raw_pace: str) -> int | None:
+    raw_pace = raw_pace.strip()
+    if not raw_pace or raw_pace == "-":
+        return None
+
+    try:
+        mins, secs = [int(i) for i in raw_pace.split(":")]
+    except ValueError:
+        return None
+
+    if secs == 60:
+        mins += 1
+        secs = 0
+    return mins * 60 + secs
+
+
 def get_running_data() -> tuple[
     list[datetime], list[float], list[float], list[int], list[float | None], list[float | None]
 ]:
@@ -116,10 +132,10 @@ def get_running_data() -> tuple[
                 continue
             dt = datetime.strptime(cols[0], "%Y-%m-%d %H:%M:%S")
             distance = float(cols[1])
-            mins, secs = [int(i) for i in cols[3].split(":")]
-            if secs == 60:
-                mins = mins + 1
-                secs = 0
+            pace_seconds = parse_pace_seconds(cols[3])
+            if pace_seconds is None:
+                print(f"Skipping invalid pace for DT={cols[0]}: {cols[3]!r}")
+                continue
             # 处理纬度和经度，允许为空或无效
             start_lat = None
             start_lng = None
@@ -134,7 +150,7 @@ def get_running_data() -> tuple[
                 start_lng = None
             if distance <= 0.0:
                 continue
-            data.append((dt, distance, mins * 60 + secs, start_lat, start_lng))
+            data.append((dt, distance, pace_seconds, start_lat, start_lng))
     data.sort(key=lambda t: t[0])
     acc = 0.0
     dts = []
