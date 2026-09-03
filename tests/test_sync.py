@@ -8,6 +8,7 @@ from cryptography.fernet import Fernet
 from garmin_tokens import decrypt_tokenstore, encrypt_tokenstore
 from sync import (
     SyncPaths,
+    export_csv_atomic,
     fetch_garmin_activities,
     parse_garmin_activity,
     run_sync,
@@ -88,6 +89,14 @@ def test_update_replaces_same_garmin_id_without_duplicate():
 
     assert len(result) == 1
     assert result[0]["distance"] == current["distance"]
+
+
+def test_export_csv_uses_unix_line_endings(tmp_path):
+    output = tmp_path / "running.csv"
+
+    export_csv_atomic([parse_garmin_activity(GARMIN_RUN)], output)
+
+    assert b"\r\n" not in output.read_bytes()
 
 
 def test_fetch_failure_keeps_existing_data_and_persists_rotated_refresh_token(tmp_path):

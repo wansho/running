@@ -167,7 +167,7 @@ def export_csv_atomic(records: list[dict], output_path: Path) -> None:
             suffix=".tmp",
             delete=False,
         ) as handle:
-            writer = csv.writer(handle)
+            writer = csv.writer(handle, lineterminator="\n")
             writer.writerow(["DT", "distance(Km)", "heart", "pace", "start_lat", "start_lng"])
             for record in records:
                 writer.writerow(
