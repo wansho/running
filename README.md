@@ -57,6 +57,6 @@ python render.py
 GARMIN_TOKEN_KEY="$(security find-generic-password \
   -a wanshuo -s running-garmin-token-key -w)" \
   python garmin_tokens.py encrypt \
-  /Users/wanshuo/.garminconnect/137852926/garmin_tokens.json \
-  data/garmin_tokens.enc
+  --input /Users/wanshuo/.garminconnect/137852926/garmin_tokens.json \
+  --output data/garmin_tokens.enc
 ```
