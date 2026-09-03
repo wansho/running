@@ -125,3 +125,4 @@
 - 完成 GitHub Actions：使用 `GARMIN_TOKEN_KEY` 解密令牌，串行同步，并在任务结束时提交轮换后的密文和生成数据。
 - 补充本地运行、Secret 配置、refresh token 轮换和令牌恢复说明。
 - GitHub Secret 的值保存在本机钥匙串中，不在日志或代码中明文输出。
+- 已在 `wansho/running` 的 Actions repository secrets 中创建 `GARMIN_TOKEN_KEY`，页面确认保存成功。
