@@ -127,3 +127,6 @@
 - GitHub Secret 的值保存在本机钥匙串中，不在日志或代码中明文输出。
 - 已在 `wansho/running` 的 Actions repository secrets 中创建 `GARMIN_TOKEN_KEY`，页面确认保存成功。
 - 完成收尾验证，并修正 README 中令牌加密命令的参数格式。
+- 用户要求将全部变更合并到 `main` 并推送 GitHub。
+- 合并远端 79 个历史同步提交，生成文件冲突采用已验证的三源数据版本。
+- 合并后的 `main` 通过 22 项测试，并成功推送到 `origin/main`。
