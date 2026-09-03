@@ -75,17 +75,29 @@ def extract_fit_metadata(path: Path, reader_factory=None) -> dict[str, object]:
             source_path = temporary_path
 
         fallback: dict[str, object] = {}
+        activity_local_time: datetime | None = None
         with reader_factory(source_path) as frames:
             for frame in frames:
                 if not hasattr(frame, "get_value"):
                     continue
+                try:
+                    frame_local_time = frame.get_value("local_timestamp")
+                except KeyError:
+                    frame_local_time = None
+                if isinstance(frame_local_time, datetime):
+                    activity_local_time = frame_local_time
                 prefix = "start_position_" if getattr(frame, "name", "") == "session" else "position_"
-                lat = _normalize_coordinate(frame.get_value(f"{prefix}lat"), latitude=True)
-                lng = _normalize_coordinate(frame.get_value(f"{prefix}long"), latitude=False)
+                try:
+                    raw_lat = frame.get_value(f"{prefix}lat")
+                    raw_lng = frame.get_value(f"{prefix}long")
+                except KeyError:
+                    continue
+                lat = _normalize_coordinate(raw_lat, latitude=True)
+                lng = _normalize_coordinate(raw_lng, latitude=False)
                 if lat is None or lng is None:
                     continue
                 result: dict[str, object] = {"start_lat": lat, "start_lng": lng}
-                local_time = frame.get_value("local_timestamp")
+                local_time = frame_local_time or activity_local_time
                 if isinstance(local_time, datetime):
                     result["start_date_local"] = _format_datetime(local_time)
                 if getattr(frame, "name", "") == "session":

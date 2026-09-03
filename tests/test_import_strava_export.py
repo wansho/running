@@ -38,21 +38,35 @@ def test_extract_track_metadata_returns_empty_for_bad_gpx(tmp_path, caplog):
 
 def test_extracts_fit_session_position_and_local_timestamp(monkeypatch, tmp_path):
     class FakeMessage:
-        name = "session"
+        def __init__(self, name, values):
+            self.name = name
+            self.values = values
 
         def get_value(self, key):
-            return {
-                "start_position_lat": 31.86246 * 2**31 / 180,
-                "start_position_long": 118.83694 * 2**31 / 180,
-                "local_timestamp": datetime(2026, 9, 3, 6, 14, 5, tzinfo=timezone.utc),
-            }.get(key)
+            if key not in self.values:
+                raise KeyError(key)
+            return self.values[key]
 
     class FakeReader:
         def __init__(self, _source):
             pass
 
         def __enter__(self):
-            return iter([FakeMessage()])
+            return iter(
+                [
+                    FakeMessage(
+                        "activity",
+                        {"local_timestamp": datetime(2026, 9, 3, 6, 14, 5, tzinfo=timezone.utc)},
+                    ),
+                    FakeMessage(
+                        "session",
+                        {
+                            "start_position_lat": 31.86246 * 2**31 / 180,
+                            "start_position_long": 118.83694 * 2**31 / 180,
+                        },
+                    ),
+                ]
+            )
 
         def __exit__(self, *_args):
             return False
