@@ -1,5 +1,26 @@
 {
-  "records": [],
+  "records": [
+    {
+      "run_id": 24265271586,
+      "name": "南京市 跑步",
+      "distance": 2694.4599609375,
+      "moving_time": 1749.0,
+      "elapsed_time": 1777.4520263671875,
+      "type": "running",
+      "type_id": 1,
+      "parent_type_id": 17,
+      "start_date": "2026-09-06 22:02:09",
+      "start_date_local": "2026-09-07 06:02:09",
+      "location_country": "南京市",
+      "average_heartrate": 114.0,
+      "average_speed": 1.5160000324249268,
+      "pace": "10:49",
+      "summary_polyline": null,
+      "source": "garmin",
+      "start_lat": 31.863748328760266,
+      "start_lng": 118.83979378268123
+    }
+  ],
   "data_source": "garmin_sync",
-  "last_successful_sync_at": "2026-09-06 02:31:58 UTC"
+  "last_successful_sync_at": "2026-09-07 02:29:40 UTC"
 }
