@@ -15933,6 +15933,26 @@
       "source": "garmin",
       "start_lat": 31.862932853400707,
       "start_lng": 118.83833943866193
+    },
+    {
+      "run_id": 25189460821,
+      "name": "跑步",
+      "distance": 2191.199951171875,
+      "moving_time": 1068.0,
+      "elapsed_time": 1359.574951171875,
+      "type": "running",
+      "type_id": 1,
+      "parent_type_id": 17,
+      "start_date": "2026-11-24 22:11:21",
+      "start_date_local": "2026-11-25 06:11:21",
+      "location_country": null,
+      "average_heartrate": 121.0,
+      "average_speed": 1.6119999885559082,
+      "pace": "8:07",
+      "summary_polyline": null,
+      "source": "garmin",
+      "start_lat": 31.863411962985992,
+      "start_lng": 118.84005538187921
     }
   ],
   "data_source": "combined"
